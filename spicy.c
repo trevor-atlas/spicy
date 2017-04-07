@@ -14,8 +14,11 @@
 #include <unistd.h>
 
 /* defines */
+
 #define SPICY_VERSION "0.0.1"
-#define CTRL_KEY(k) ((k)&0x1f)
+#define SPICY_TAB_STOP 8
+
+#define CTRL_KEY(k) ((k) & 0x1f)
 
 enum editorKey {
     ARROW_LEFT = 1000,
@@ -164,6 +167,29 @@ int getWindowSize(int *rows, int *cols) {
 }
 
 /* row ops */
+
+void editorUpdateRow(erow *row) {
+    int tabs = 0;
+    int j;
+    for (j = 0; j < row->size; j++)
+    if (row->chars[j] == '\t') tabs++;
+
+    free(row->render);
+    row->render = malloc(row->size + tabs*(SPICY_TAB_STOP - 1) + 1);
+
+    int idx = 0;
+    for (j = 0; j < row->size; j++) {
+        if (row->chars[j] == '\t') {
+            row->render[idx++] = ' ';
+            while (idx % SPICY_TAB_STOP != 0) row->render[idx++] = ' ';
+        } else {
+            row->render[idx++] = row->chars[j];
+        }
+    }
+    row->render[idx] = '\0';
+    row->rsize = idx;
+}
+
 void editorAppendRow(char *s, size_t len) {
     E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1));
 
@@ -237,7 +263,8 @@ void editorDrawRows(struct abuf *ab) {
         if (filerow >= E.numrows) {
             if (E.numrows == 0 && y == E.screenrows / 3) {
                 char welcome[80];
-                int welcomelen = snprintf(welcome, sizeof(welcome), "Spicy Editor -- version %s", SPICY_VERSION);
+                int welcomelen = snprintf(welcome, sizeof(welcome),
+                    "Spicy editor -- version %s", SPICY_VERSION);
                 if (welcomelen > E.screencols) welcomelen = E.screencols;
                 int padding = (E.screencols - welcomelen) / 2;
                 if (padding) {
